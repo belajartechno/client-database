@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Admin - Client Database</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+      background-size: 400% 400%;
+      animation: gradientBG 15s ease infinite;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    
+    @keyframes gradientBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    
+    .login-container {
+      width: 100%;
+      max-width: 450px;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+    }
+    
+    .login-header {
+      background: #2c3e50;
+      color: white;
+      padding: 25px 30px;
+      text-align: center;
+    }
+    
+    .login-header h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    
+    .login-header p {
+      opacity: 0.8;
+      font-size: 15px;
+    }
+    
+    .login-body {
+      padding: 30px;
+    }
+    
+    .form-group {
+      margin-bottom: 22px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 14px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 16px;
+      transition: all 0.3s;
+    }
+    
+    .form-group input:focus {
+      border-color: #3498db;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+    }
+    
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .btn:hover {
+      background: #2980b9;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+    }
+    
+    .error-message {
+      background: #ffeded;
+      color: #e74c3c;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 15px;
+      display: none;
+    }
+    
+    .register-link {
+      text-align: center;
+      margin-top: 25px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+    }
+    
+    .register-link a {
+      color: #3498db;
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .register-link a:hover {
+      color: #2980b9;
+      text-decoration: underline;
+    }
+    
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 14px;
+    }
+    
+    @media (max-width: 480px) {
+      .login-body {
+        padding: 20px;
+      }
+      
+      .login-header h1 {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-header">
+      <h1><i class="fas fa-lock"></i> Admin Portal</h1>
+      <p>Sistem Manajemen Database Client Profesional</p>
+    </div>
+    
+    <div class="login-body">
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email">Alamat Email</label>
+          <input type="email" id="email" placeholder="admin@bisnismu.com" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Kata Sandi</label>
+          <input type="password" id="password" placeholder="••••••••" required>
+        </div>
+        
+        <div id="loginError" class="error-message">
+          Email atau kata sandi salah. Silakan coba lagi.
+        </div>
+        
+        <button type="submit" class="btn">
+          <i class="fas fa-sign-in-alt"></i> Masuk ke Dashboard
+        </button>
+      </form>
+      
+      <div class="register-link">
+        <a href="daftar.html">
+          <i class="fas fa-user-plus"></i> Form Registrasi Client
+        </a>
+      </div>
+    </div>
+  </div>
+  
+  <div class="footer">
+    © 2023 Client Database System | Dibuat dengan ❤️
+  </div>
+
+  <!-- Firebase SDK Versi 8 (Stabil) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script>
+    // 🔥 Konfigurasi Firebase (TANPA measurementId)
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+    
+    // Inisialisasi Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    
+    // Cek status login
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        // Jika sudah login, redirect ke dashboard
+        window.location.href = 'dashboard.html';
+      }
+    });
+    
+    // Handle form login
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const errorEl = document.getElementById('loginError');
+      
+      // Reset error
+      errorEl.style.display = 'none';
+      
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        // Redirect ke dashboard setelah login
+        window.location.href = 'dashboard.html';
+      } catch (error) {
+        console.error("Login error:", error);
+        errorEl.textContent = error.message;
+        errorEl.style.display = 'block';
+        
+        // Tambahkan efek visual untuk error
+        const form = document.querySelector('.login-body');
+        form.style.animation = 'shake 0.5s';
+        setTimeout(() => {
+          form.style.animation = '';
+        }, 500);
+      }
+    });
+  </script>
+</body>
+</html>
