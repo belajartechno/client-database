@@ -292,71 +292,93 @@
       appId: "1:989220863076:web:5f52847d33e2be34fdb371"
     };
     
-    // Inisialisasi Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+   // Inisialisasi Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  
+  // Perbaiki konfigurasi Firestore (SOLUSI UTAMA)
+  db.settings({
+    experimentalAutoDetectLongPolling: true,
+    merge: true
+  });
+  
+  // Tambahkan error handler untuk koneksi
+  db.enableNetwork().catch(error => {
+    console.error("Gagal mengaktifkan jaringan Firestore:", error);
+    alert("Koneksi ke database terputus. Periksa koneksi internet Anda.");
+  });
+  
+  // Handle form registrasi
+  document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
     
-    // Setting tambahan untuk Firestore
-    db.settings({ 
-      experimentalForceLongPolling: true,
-      merge: true
-    });
+    // Reset error
+    document.getElementById('errorNama').style.display = 'none';
+    document.getElementById('errorTelpon').style.display = 'none';
     
-    // Handle form registrasi
-    document.getElementById('registerForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
+    const nama = document.getElementById('nama').value.trim();
+    const telpon = document.getElementById('telpon').value.trim();
+    
+    let isValid = true;
+    
+    // Validasi nama
+    if (!nama) {
+      document.getElementById('errorNama').style.display = 'block';
+      isValid = false;
+    }
+    
+    // Validasi nomor telepon
+    if (!telpon || !/^08\d{8,11}$/.test(telpon)) {
+      document.getElementById('errorTelpon').style.display = 'block';
+      isValid = false;
+    }
+    
+    if (!isValid) return;
+    
+    try {
+      const clientData = {
+        nama,
+        tglLahir: document.getElementById('tglLahir').value || null,
+        alamat: document.getElementById('alamat').value || null,
+        pekerjaan: document.getElementById('pekerjaan').value || null,
+        status: 'Pending',
+        telpon,
+        keterangan: document.getElementById('keterangan').value || null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
       
-      // Reset error
-      document.getElementById('errorNama').style.display = 'none';
-      document.getElementById('errorTelpon').style.display = 'none';
+      console.log("Mencoba menyimpan data:", clientData);
       
-      const nama = document.getElementById('nama').value.trim();
-      const telpon = document.getElementById('telpon').value.trim();
+      // Simpan ke Firestore
+      const docRef = await db.collection('clients').add(clientData);
+      console.log("Dokumen berhasil disimpan dengan ID: ", docRef.id);
       
-      let isValid = true;
+      // Tampilkan pesan sukses
+      document.getElementById('registerForm').style.display = 'none';
+      document.getElementById('successMessage').style.display = 'block';
       
-      // Validasi nama
-      if (!nama) {
-        document.getElementById('errorNama').style.display = 'block';
-        isValid = false;
+      // Redirect setelah 3 detik
+      setTimeout(() => {
+        window.location.href = 'index.html';
+      }, 3000);
+      
+    } catch (error) {
+      console.error("Error adding document: ", error);
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
+      
+      let errorMessage = "Gagal mengirim  ";
+      
+      if (error.code === 'permission-denied') {
+        errorMessage += "Anda tidak memiliki izin untuk menyimpan data. Pastikan Firestore Rules sudah diatur dengan benar.";
+      } else if (error.code === 'invalid-argument') {
+        errorMessage += "Format data tidak valid. Pastikan semua field diisi dengan benar.";
+      } else {
+        errorMessage += error.message;
       }
       
-      // Validasi nomor telepon
-      if (!telpon || !/^08\d{8,11}$/.test(telpon)) {
-        document.getElementById('errorTelpon').style.display = 'block';
-        isValid = false;
-      }
-      
-      if (!isValid) return;
-      
-      try {
-        const clientData = {
-          nama,
-          tglLahir: document.getElementById('tglLahir').value,
-          alamat: document.getElementById('alamat').value,
-          pekerjaan: document.getElementById('pekerjaan').value,
-          status: 'Pending',
-          telpon,
-          keterangan: document.getElementById('keterangan').value,
-          createdAt: new Date()
-        };
-        
-        // Simpan ke Firestore
-        await db.collection('clients').add(clientData);
-        
-        // Tampilkan pesan sukses
-        document.getElementById('registerForm').style.display = 'none';
-        document.getElementById('successMessage').style.display = 'block';
-        
-        // Redirect setelah 3 detik
-        setTimeout(() => {
-          window.location.href = 'index.html';
-        }, 3000);
-        
-      } catch (error) {
-        console.error("Error adding document: ", error);
-        alert("Gagal mengirim data: " + error.message);
-      }
+      alert(errorMessage);
+    }
     });
   </script>
 </body>
