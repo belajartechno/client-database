@@ -654,36 +654,64 @@
   const db = firebase.firestore();
   const auth = firebase.auth();
   
-  // Set auth persistence ke session (SOLUSI UTAMA)
-  auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
-    .then(() => {
-      console.log("Auth persistence diatur ke SESSION");
-    })
-    .catch((error) => {
-      console.error("Error setting auth persistence:", error);
-    });
+  // Perbaiki konfigurasi Firestore (SOLUSI UTAMA)
+  db.settings({
+    experimentalAutoDetectLongPolling: true,
+    merge: true
+  });
+  
+  // Tambahkan error handler untuk koneksi
+  db.enableNetwork().catch(error => {
+    console.error("Gagal mengaktifkan jaringan Firestore:", error);
+    showNotification("Koneksi ke database terputus. Periksa koneksi internet Anda.", "error");
+  });
   
   // Ambil nama file halaman saat ini
   const currentPage = window.location.pathname.split('/').pop();
   
   // Cek status login
   auth.onAuthStateChanged(user => {
-    console.log("Status auth berubah. User:", user ? "ADA" : "TIDAK ADA");
-    console.log("Halaman saat ini:", currentPage);
+    // ... kode sebelumnya ...
+  });
+  
+  function saveClient() {
+    if (!validateForm()) return;
     
-    // Hanya redirect jika kita di halaman dashboard TAPI user tidak login
-    if (currentPage === 'dashboard.html' && !user) {
-      console.log("User tidak terdeteksi, redirect ke login...");
-      // Tambahkan delay kecil untuk memastikan semua proses selesai
-      setTimeout(() => {
-        window.location.href = 'index.html';
-      }, 100);
-    }
-    // Jika di halaman dashboard DAN user sudah login, tampilkan dashboard
-    else if (currentPage === 'dashboard.html' && user) {
-      console.log("User terdeteksi, tampilkan dashboard");
-      document.getElementById('userEmail').textContent = user.email;
-      loadClients();
+    const data = {
+      nama: document.getElementById('nama').value.trim(),
+      tglLahir: document.getElementById('tglLahir').value || null,
+      alamat: document.getElementById('alamat').value || null,
+      pekerjaan: document.getElementById('pekerjaan').value || null,
+      status: document.getElementById('status').value,
+      telpon: document.getElementById('telpon').value.trim(),
+      keterangan: document.getElementById('keterangan').value || null,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    
+    // Jika ini data baru
+    if (!editingId) {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      db.collection('clients').add(data)
+        .then(() => {
+          closeModal();
+          showNotification('Client berhasil ditambahkan!', 'success');
+        })
+        .catch(error => {
+          console.error("Error adding document: ", error);
+          showNotification('Gagal menambahkan client: ' + error.message, 'error');
+        });
+    } 
+    // Jika edit data
+    else {
+      db.collection('clients').doc(editingId).update(data)
+        .then(() => {
+          closeModal();
+          showNotification('Data client berhasil diperbarui!', 'success');
+        })
+        .catch(error => {
+          console.error("Error updating document: ", error);
+          showNotification('Gagal memperbarui  ' + error.message, 'error');
+        });
     }
   });
     
