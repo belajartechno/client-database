@@ -221,42 +221,67 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     
-    // Cek status login
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        // Jika sudah login, redirect ke dashboard
-        window.location.href = 'dashboard.html';
-      }
+    // Set auth persistence ke session (SOLUSI UTAMA)
+  auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+    .then(() => {
+      console.log("Auth persistence diatur ke SESSION");
+    })
+    .catch((error) => {
+      console.error("Error setting auth persistence:", error);
     });
+  
+  // Ambil nama file halaman saat ini
+  const currentPage = window.location.pathname.split('/').pop();
+  
+  // Cek status login
+  auth.onAuthStateChanged(user => {
+    console.log("Status auth berubah. User:", user ? "ADA" : "TIDAK ADA");
+    console.log("Halaman saat ini:", currentPage);
     
-    // Handle form login
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      const errorEl = document.getElementById('loginError');
-      
-      // Reset error
-      errorEl.style.display = 'none';
-      
-      try {
-        await auth.signInWithEmailAndPassword(email, password);
-        // Redirect ke dashboard setelah login
+    // Hanya redirect jika kita di halaman login DAN user sudah login
+    if (currentPage === 'index.html' && user) {
+      console.log("User terdeteksi, redirect ke dashboard...");
+      // Tambahkan delay kecil untuk memastikan semua proses selesai
+      setTimeout(() => {
         window.location.href = 'dashboard.html';
-      } catch (error) {
-        console.error("Login error:", error);
-        errorEl.textContent = error.message;
-        errorEl.style.display = 'block';
-        
-        // Tambahkan efek visual untuk error
-        const form = document.querySelector('.login-body');
-        form.style.animation = 'shake 0.5s';
-        setTimeout(() => {
-          form.style.animation = '';
-        }, 500);
-      }
-    });
+      }, 100);
+    }
+    // Jika di halaman login TAPI user tidak login, tampilkan form
+    else if (currentPage === 'index.html' && !user) {
+      console.log("User tidak terdeteksi, tampilkan form login");
+      // Tidak perlu redirect
+    }
+  });
+  
+  // Handle form login
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const errorEl = document.getElementById('loginError');
+    
+    // Reset error
+    errorEl.style.display = 'none';
+    
+    try {
+      await auth.signInWithEmailAndPassword(email, password);
+      console.log("Login berhasil, redirect ke dashboard...");
+      // Redirect ke dashboard setelah login
+      window.location.href = 'dashboard.html';
+    } catch (error) {
+      console.error("Login error:", error);
+      errorEl.textContent = error.message;
+      errorEl.style.display = 'block';
+      
+      // Tambahkan efek visual untuk error
+      const form = document.querySelector('.login-body');
+      form.style.animation = 'shake 0.5s';
+      setTimeout(() => {
+        form.style.animation = '';
+      }, 500);
+    }
+  });
   </script>
 </body>
 </html>
