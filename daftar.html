@@ -278,9 +278,10 @@
     </div>
   </div>
 
-  <!-- Firebase SDK Versi 8 (Stabil) -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <!-- Firebase SDK Versi 9 (Compatible) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js"></script>
   <script>
     // 🔥 Konfigurasi Firebase (TANPA measurementId)
     const firebaseConfig = {
@@ -302,12 +303,27 @@
     merge: true
   });
   
-  // Tambahkan error handler untuk koneksi
+  // Tambahkan error handler untuk koneksi Firestore
   db.enableNetwork().catch(error => {
     console.error("Gagal mengaktifkan jaringan Firestore:", error);
-    alert("Koneksi ke database terputus. Periksa koneksi internet Anda.");
+    showNotification("Koneksi ke database terputus. Periksa koneksi internet Anda.", "error");
   });
-  
+
+  // Listener Perubahan Koneksi
+  db.onSnapshotsInSync(() => {
+    console.log("Firestore connection is healthy");
+  });
+
+  // Eror Handler Global
+  db.onSnapshotError(error => {
+    console.error("firestore snapshot error:", error)
+    if (error.code === 'unavailable') {
+      showNotification("Koneksi ke database terputus. Sedang mencoba menyambung ulang...",
+      setTimeout(() => {
+        db.disableNetwork().then(() => db.enableNetwork(();
+      }, 5000);
+    }
+  });
   // Handle form registrasi
   document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -346,7 +362,8 @@
         keterangan: document.getElementById('keterangan').value || null,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       };
-      
+
+      //Logging untuk debugging
       console.log("Mencoba menyimpan data:", clientData);
       
       // Simpan ke Firestore
@@ -368,7 +385,8 @@
       console.error("Error message:", error.message);
       
       let errorMessage = "Gagal mengirim  ";
-      
+
+      // Penanganan Eror Spesifik
       if (error.code === 'permission-denied') {
         errorMessage += "Anda tidak memiliki izin untuk menyimpan data. Pastikan Firestore Rules sudah diatur dengan benar.";
       } else if (error.code === 'invalid-argument') {
