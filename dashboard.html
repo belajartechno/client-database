@@ -655,7 +655,8 @@
   const auth = firebase.auth();
   
   // Perbaiki konfigurasi Firestore (SOLUSI UTAMA)
-  db.settings({
+  const db = firebase.firestore(); 
+    db.settings({
     experimentalAutoDetectLongPolling: true,
     merge: true
   });
@@ -988,18 +989,18 @@
       
       const data = {
         nama: document.getElementById('nama').value.trim(),
-        tglLahir: document.getElementById('tglLahir').value,
-        alamat: document.getElementById('alamat').value,
+        tglLahir: document.getElementById('tglLahir').value || null,
+        alamat: document.getElementById('alamat').value || null,
         pekerjaan: document.getElementById('pekerjaan').value,
         status: document.getElementById('status').value,
         telpon: document.getElementById('telpon').value.trim(),
-        keterangan: document.getElementById('keterangan').value,
-        updatedAt: new Date()
+        keterangan: document.getElementById('keterangan').value || null,
+        updatedAt: firebase.firestor.FieldValue.serverTimestamp()
       };
       
       // Jika ini data baru
       if (!editingId) {
-        data.createdAt = new Date();
+        data.createdAt = firebase.firestore.FieldValue.ServerTimestamp();
         db.collection('clients').add(data)
           .then(() => {
             closeModal();
