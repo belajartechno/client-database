@@ -466,135 +466,135 @@
     
     // Fungsi utama untuk mengirim data
     function submitRegistration() {
-      if (!validateForm()) {
-        console.log("Validasi form gagal");
-        showNotification("Harap perbaiki error pada form", "error");
-        return false;
-      }
-      
-      disableSubmitButton(true, "Mengirim data...");
-      
-      try {
-        const nama = document.getElementById('nama').value.trim();
-        const telpon = document.getElementById('telpon').value.trim();
+  if (!validateForm()) {
+    console.log("Validasi form gagal");
+    showNotification("Harap perbaiki error pada form", "error");
+    return false;
+  }
+  
+  disableSubmitButton(true, "Mengirim data...");
+  
+  try {
+    const nama = document.getElementById('nama').value.trim();
+    const telpon = document.getElementById('telpon').value.trim();
+    
+    const clientData = {
+      nama,
+      tglLahir: document.getElementById('tglLahir').value || null,
+      alamat: document.getElementById('alamat').value || null,
+      pekerjaan: document.getElementById('pekerjaan').value || null,
+      status: 'Pending',
+      telpon,
+      keterangan: document.getElementById('keterangan').value || null,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    
+    console.log("Mencoba menyimpan ", clientData);
+    
+    // Simpan ke Firestore
+    db.collection('clients').add(clientData)
+      .then(docRef => {
+        console.log("Dokumen berhasil disimpan dengan ID: ", docRef.id);
         
-        const clientData = {
-          nama,
-          tglLahir: document.getElementById('tglLahir').value || null,
-          alamat: document.getElementById('alamat').value || null,
-          pekerjaan: document.getElementById('pekerjaan').value || null,
-          status: 'Pending',
-          telpon,
-          keterangan: document.getElementById('keterangan').value || null,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
+        // Tampilkan pesan sukses
+        document.getElementById('registerForm').style.display = 'none';
+        document.getElementById('successMessage').style.display = 'block';
         
-        console.log("Mencoba menyimpan ", clientData);
+        // Redirect setelah 3 detik
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 3000);
+      })
+      .catch(error => {
+        console.error("Error adding document: ", error);
+        console.error("Error code:", error.code);
+        console.error("Error message:", error.message);
         
-        // Simpan ke Firestore
-        db.collection('clients').add(clientData)
-          .then(docRef => {
-            console.log("Dokumen berhasil disimpan dengan ID: ", docRef.id);
-            
-            // Tampilkan pesan sukses
-            document.getElementById('registerForm').style.display = 'none';
-            document.getElementById('successMessage').style.display = 'block';
-            
-            // Redirect setelah 3 detik
-            setTimeout(() => {
-              window.location.href = 'index.html';
-            }, 3000);
-          })
-          .catch(error => {
-            console.error("Error adding document: ", error);
-            console.error("Error code:", error.code);
-            console.error("Error message:", error.message);
-            
-            let errorMessage = "Gagal mengirim  ";
-            
-            // Tambahkan penanganan error spesifik
-            if (error.code === 'permission-denied') {
-              errorMessage += "Anda tidak memiliki izin untuk menyimpan data. Pastikan Firestore Rules sudah diatur dengan benar.";
-            } else if (error.code === 'invalid-argument') {
-              errorMessage += "Format data tidak valid. Pastikan semua field diisi dengan benar.";
-            } else if (error.code === 'unavailable') {
-              errorMessage += "Koneksi ke database terputus. Periksa koneksi internet Anda.";
-            } else {
-              errorMessage += error.message;
-            }
-            
-            showNotification(errorMessage, "error");
-            disableSubmitButton(false);
-          });
-          
-        return true;
-      } catch (error) {
-        console.error("Error dalam submitRegistration:", error);
-        showNotification("Terjadi kesalahan: " + error.message, "error");
+        let errorMessage = "Gagal mengirim  ";
+        
+        // Tambahkan penanganan error spesifik
+        if (error.code === 'permission-denied') {
+          errorMessage += "Anda tidak memiliki izin untuk menyimpan data. Pastikan Firestore Rules sudah diatur dengan benar.";
+        } else if (error.code === 'invalid-argument') {
+          errorMessage += "Format data tidak valid. Pastikan semua field diisi dengan benar.";
+        } else if (error.code === 'unavailable') {
+          errorMessage += "Koneksi ke database terputus. Periksa koneksi internet Anda.";
+        } else {
+          errorMessage += error.message;
+        }
+        
+        showNotification(errorMessage, "error");
         disableSubmitButton(false);
-        return false;
-      }
-    }
+      });
+      
+    return true;
+  } catch (error) {
+    console.error("Error dalam submitRegistration:", error);
+    showNotification("Terjadi kesalahan: " + error.message, "error");
+    disableSubmitButton(false);
+    return false;
+  }
+}
     
     // Fungsi untuk mendaftarkan event listener
-    function setupEventListeners() {
-      const form = document.getElementById('registerForm');
-      if (form) {
-        // Hapus event listener lama jika ada
-        const newForm = form.cloneNode(true);
-        form.parentNode.replaceChild(newForm, form);
-        
-        // Tambahkan event listener baru
-        newForm.addEventListener('submit', function(e) {
-          e.preventDefault();
-          console.log("Form registrasi disubmit");
-          submitRegistration();
-        });
-        
-        console.log("Event listener untuk form registrasi berhasil terdaftar");
-      } else {
-        console.error("Form registrasi tidak ditemukan");
-        showNotification("Form registrasi tidak ditemukan. Halaman mungkin tidak dimuat dengan benar.", "error");
-      }
-      
-      // Tambahkan event listener untuk input telpon
-      const telponInput = document.getElementById('telpon');
-      if (telponInput) {
-        // Hapus event listener lama jika ada
-        const newTelponInput = telponInput.cloneNode(true);
-        telponInput.parentNode.replaceChild(newTelponInput, telponInput);
-        
-        newTelponInput.addEventListener('input', function() {
-          this.value = this.value.replace(/[^0-9]/g, '');
-        });
-        
-        console.log("Event listener untuk input telpon berhasil terdaftar");
-      }
-    }
+   function setupEventListeners() {
+  const form = document.getElementById('registerForm');
+  if (form) {
+    // Hapus event listener lama jika ada
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+    
+    // Tambahkan event listener baru
+    newForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      console.log("Form registrasi disubmit");
+      submitRegistration();
+    });
+    
+    console.log("Event listener untuk form registrasi berhasil terdaftar");
+  } else {
+    console.error("Form registrasi tidak ditemukan");
+    showNotification("Form registrasi tidak ditemukan. Halaman mungkin tidak dimuat dengan benar.", "error");
+  }
+  
+  // Tambahkan event listener untuk input telpon
+  const telponInput = document.getElementById('telpon');
+  if (telponInput) {
+    // Hapus event listener lama jika ada
+    const newTelponInput = telponInput.cloneNode(true);
+    telponInput.parentNode.replaceChild(newTelponInput, telponInput);
+    
+    newTelponInput.addEventListener('input', function() {
+      this.value = this.value.replace(/[^0-9]/g, '');
+    });
+    
+    console.log("Event listener untuk input telpon berhasil terdaftar");
+  }
+}
     
     // Fungsi untuk memastikan DOM selesai dimuat
     function waitForDOM() {
-      if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        console.log("DOM siap, mendaftarkan event listeners...");
-        setupEventListeners();
-        checkFirestoreConnection();
-      } else {
-        console.log("Menunggu DOM selesai dimuat...");
-        document.addEventListener('DOMContentLoaded', function() {
-          console.log("DOM selesai dimuat, mendaftarkan event listeners...");
-          setupEventListeners();
-          checkFirestoreConnection();
-        });
-        
-        // Timeout tambahan jika DOMContentLoaded tidak terpicu
-        setTimeout(function() {
-          if (!document.getElementById('registerForm')) {
-            console.error("DOM tidak dimuat dengan benar setelah timeout");
-            showNotification("Halaman tidak dimuat dengan benar. Coba refresh halaman.", "error");
-          }
-        }, 5000);
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    console.log("DOM siap, mendaftarkan event listeners...");
+    setupEventListeners();
+    checkFirestoreConnection();
+  } else {
+    console.log("Menunggu DOM selesai dimuat...");
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log("DOM selesai dimuat, mendaftarkan event listeners...");
+      setupEventListeners();
+      checkFirestoreConnection();
+    });
+    
+    // Timeout tambahan jika DOMContentLoaded tidak terpicu
+    setTimeout(function() {
+      if (!document.getElementById('registerForm')) {
+        console.error("DOM tidak dimuat dengan benar setelah timeout");
+        showNotification("Halaman tidak dimuat dengan benar. Coba refresh halaman.", "error");
       }
-    }
+    }, 5000);
+  }
+}
     
     // Jalankan fungsi utama
     waitForDOM();
