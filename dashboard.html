@@ -549,7 +549,7 @@
             <input type="text" id="searchInput" placeholder="Cari client..." onkeyup="filterTable()">
           </div>
           <div>
-            <button class="btn success" onclick="openAddModal()">
+            <button class="btn success" id="addClientBtn">
               <i class="fas fa-plus"></i> Tambah Client
             </button>
             <button class="btn primary" onclick="exportToExcel()">
@@ -651,7 +651,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn" style="background: #95a5a6; color: white;" onclick="closeModal()">Batal</button>
-        <button class="btn success" onclick="saveClient()">Simpan Perubahan</button>
+        <button class="btn success" id="saveClientBtn">Simpan Perubahan</button>
       </div>
     </div>
   </div>
@@ -661,32 +661,63 @@
   </footer>
 
   <script>
+    // Tambahkan error handler global untuk melihat error sebenarnya
+    window.onerror = function(message, source, lineno, colno, error) {
+      console.error("Global JavaScript error:", {
+        message: message,
+        source: source,
+        lineno: lineno,
+        colno: colno,
+        error: error
+      });
+      return true;
+    };
+
+    console.log("Dashboard script dimulai");
+    
     // 🔥 Konfigurasi Firebase (TANPA measurementId)
     const firebaseConfig = {
-      apiKey: "AIzaSyAOldVlQTARHUhpPCpTiolztE6Bu7hm4Y4",
-      authDomain: "client-database-app-13b98.firebaseapp.com",
-      projectId: "client-database-app-13b98",
-      storageBucket: "client-database-app-13b98.firebasestorage.app",
-      messagingSenderId: "989220863076",
-      appId: "1:989220863076:web:5f52847d33e2be34fdb371"
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
     };
     
     // Inisialisasi Firebase
-    firebase.initializeApp(firebaseConfig);
+    try {
+      firebase.initializeApp(firebaseConfig);
+      console.log("Firebase berhasil diinisialisasi");
+    } catch (error) {
+      console.error("Error inisialisasi Firebase:", error);
+      alert("Gagal menginisialisasi Firebase: " + error.message);
+    }
+    
     const db = firebase.firestore();
     const auth = firebase.auth();
     
-    // Perbaiki konfigurasi Firestore (SOLUSI UTAMA)
-    db.settings({
-      experimentalAutoDetectLongPolling: true,
-      merge: true
-    });
+    // Perbaiki konfigurasi Firestore
+    try {
+      db.settings({
+        experimentalAutoDetectLongPolling: true,
+        merge: true
+      });
+      console.log("Firestore settings berhasil diatur");
+    } catch (error) {
+      console.error("Error setting Firestore:", error);
+    }
     
     // Tambahkan error handler untuk koneksi
-    db.enableNetwork().catch(error => {
-      console.error("Gagal mengaktifkan jaringan Firestore:", error);
-      showNotification("Koneksi ke database terputus. Periksa koneksi internet Anda.", "error");
-    });
+    try {
+      db.enableNetwork().catch(error => {
+        console.error("Gagal mengaktifkan jaringan Firestore:", error);
+        showNotification("Koneksi ke database terputus. Periksa koneksi internet Anda.", "error");
+      });
+      console.log("Firestore network enabled");
+    } catch (error) {
+      console.error("Error enabling Firestore network:", error);
+    }
     
     // Ambil nama file halaman saat ini
     const currentPage = window.location.pathname.split('/').pop();
@@ -697,237 +728,346 @@
     let editingId = null;
     let jobChart = null;
     
+    // Pastikan semua fungsi didefinisikan sebelum digunakan
+    function openAddModal() {
+      try {
+        editingId = null;
+        document.getElementById('modalTitle').textContent = 'Tambah Client Baru';
+        document.getElementById('editModal').style.display = 'flex';
+        resetForm();
+        document.getElementById('nama').focus();
+        console.log("Modal tambah client dibuka");
+      } catch (error) {
+        console.error("Error membuka modal:", error);
+        showNotification("Gagal membuka modal: " + error.message, "error");
+      }
+    }
+    
+    function saveClient() {
+      try {
+        if (!validateForm()) return;
+        
+        const data = {
+          nama: document.getElementById('nama').value.trim(),
+          tglLahir: document.getElementById('tglLahir').value || null,
+          alamat: document.getElementById('alamat').value || null,
+          pekerjaan: document.getElementById('pekerjaan').value || null,
+          status: document.getElementById('status').value,
+          telpon: document.getElementById('telpon').value.trim(),
+          keterangan: document.getElementById('keterangan').value || null,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // Jika ini data baru
+        if (!editingId) {
+          data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+          db.collection('clients').add(data)
+            .then(() => {
+              closeModal();
+              showNotification('Client berhasil ditambahkan!', 'success');
+              console.log("Client berhasil ditambahkan");
+            })
+            .catch(error => {
+              console.error("Error adding document: ", error);
+              showNotification('Gagal menambahkan client: ' + error.message, 'error');
+            });
+        } 
+        // Jika edit data
+        else {
+          db.collection('clients').doc(editingId).update(data)
+            .then(() => {
+              closeModal();
+              showNotification('Data client berhasil diperbarui!', 'success');
+              console.log("Client berhasil diperbarui");
+            })
+            .catch(error => {
+              console.error("Error updating document: ", error);
+              showNotification('Gagal memperbarui  ' + error.message, 'error');
+            });
+        }
+      } catch (error) {
+        console.error("Error dalam saveClient:", error);
+        showNotification("Terjadi kesalahan: " + error.message, "error");
+      }
+    }
+    
     // Cek status login
     auth.onAuthStateChanged(user => {
-      console.log("Status auth berubah. User:", user ? "ADA" : "TIDAK ADA");
-      console.log("Halaman saat ini:", currentPage);
-      
-      // Hanya redirect jika kita di halaman dashboard TAPI user tidak login
-      if (currentPage === 'dashboard.html' && !user) {
-        console.log("User tidak terdeteksi, redirect ke login...");
-        // Tambahkan delay kecil untuk memastikan semua proses selesai
-        setTimeout(() => {
-          window.location.href = 'index.html';
-        }, 100);
-      }
-      // Jika di halaman dashboard DAN user sudah login, tampilkan dashboard
-      else if (currentPage === 'dashboard.html' && user) {
-        console.log("User terdeteksi, tampilkan dashboard");
-        document.getElementById('userEmail').textContent = user.email;
-        loadClients();
+      try {
+        console.log("Status auth berubah. User:", user ? "ADA" : "TIDAK ADA");
+        console.log("Halaman saat ini:", currentPage);
+        
+        // Hanya redirect jika kita di halaman dashboard TAPI user tidak login
+        if (currentPage === 'dashboard.html' && !user) {
+          console.log("User tidak terdeteksi, redirect ke login...");
+          // Tambahkan delay kecil untuk memastikan semua proses selesai
+          setTimeout(() => {
+            window.location.href = 'index.html';
+          }, 100);
+        }
+        // Jika di halaman dashboard DAN user sudah login, tampilkan dashboard
+        else if (currentPage === 'dashboard.html' && user) {
+          console.log("User terdeteksi, tampilkan dashboard");
+          document.getElementById('userEmail').textContent = user.email;
+          loadClients();
+        }
+      } catch (error) {
+        console.error("Error dalam onAuthStateChanged:", error);
+        showNotification("Terjadi kesalahan: " + error.message, "error");
       }
     });
     
     function logout() {
-      auth.signOut().then(() => {
-        window.location.href = 'index.html';
-      }).catch(error => {
-        console.error("Error during logout:", error);
-        showNotification("Gagal keluar: " + error.message, "error");
-      });
+      try {
+        auth.signOut().then(() => {
+          console.log("Logout berhasil");
+          window.location.href = 'index.html';
+        }).catch(error => {
+          console.error("Error during logout:", error);
+          showNotification("Gagal keluar: " + error.message, "error");
+        });
+      } catch (error) {
+        console.error("Error dalam logout:", error);
+        showNotification("Terjadi kesalahan saat logout: " + error.message, "error");
+      }
     }
     
     function loadClients() {
-      db.collection('clients').onSnapshot(snapshot => {
-        clients = [];
-        snapshot.forEach(doc => {
-          clients.push({ id: doc.id, ...doc.data() });
+      try {
+        console.log("Memuat data client...");
+        db.collection('clients').onSnapshot(snapshot => {
+          clients = [];
+          snapshot.forEach(doc => {
+            clients.push({ id: doc.id, ...doc.data() });
+          });
+          console.log(`Ditemukan ${clients.length} client`);
+          renderTable();
+          updateDashboard();
+        }, error => {
+          console.error("Error loading clients:", error);
+          showNotification("Gagal memuat data client. Pastikan Firebase terkonfigurasi dengan benar.", "error");
         });
-        renderTable();
-        updateDashboard();
-      }, error => {
-        console.error("Error loading clients:", error);
-        showNotification("Gagal memuat data client. Pastikan Firebase terkonfigurasi dengan benar.", "error");
-      });
+      } catch (error) {
+        console.error("Error dalam loadClients:", error);
+        showNotification("Terjadi kesalahan saat memuat data: " + error.message, "error");
+      }
     }
     
     function renderTable() {
-      const searchQuery = document.getElementById('searchInput')?.value.toLowerCase() || '';
-      const filtered = clients.filter(c => 
-        c.nama && c.nama.toLowerCase().includes(searchQuery) ||
-        (c.alamat && c.alamat.toLowerCase().includes(searchQuery)) ||
-        (c.pekerjaan && c.pekerjaan.toLowerCase().includes(searchQuery)) ||
-        (c.telpon && c.telpon.includes(searchQuery))
-      );
-      
-      const start = (currentPageNum - 1) * rowsPerPage;
-      const end = start + rowsPerPage;
-      const paginated = filtered.slice(start, end);
-      
-      const tbody = document.getElementById('tableBody');
-      tbody.innerHTML = '';
-      
-      if (filtered.length === 0) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="8" style="text-align: center; padding: 30px; color: #7f8c8d;">
-              Tidak ada data client yang ditemukan
+      try {
+        const searchQuery = document.getElementById('searchInput')?.value.toLowerCase() || '';
+        const filtered = clients.filter(c => 
+          c.nama && c.nama.toLowerCase().includes(searchQuery) ||
+          (c.alamat && c.alamat.toLowerCase().includes(searchQuery)) ||
+          (c.pekerjaan && c.pekerjaan.toLowerCase().includes(searchQuery)) ||
+          (c.telpon && c.telpon.includes(searchQuery))
+        );
+        
+        const start = (currentPageNum - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        const paginated = filtered.slice(start, end);
+        
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        
+        if (filtered.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="8" style="text-align: center; padding: 30px; color: #7f8c8d;">
+                Tidak ada data client yang ditemukan
+              </td>
+            </tr>
+          `;
+          document.getElementById('pagination').innerHTML = '';
+          return;
+        }
+        
+        if (paginated.length === 0 && currentPageNum > 1) {
+          currentPageNum = 1;
+          renderTable();
+          return;
+        }
+        
+        paginated.forEach(c => {
+          const usia = c.tglLahir ? calculateAge(c.tglLahir) : '-';
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${c.nama || '-'}</td>
+            <td>${formatDate(c.tglLahir) || '-'}</td>
+            <td>${usia}</td>
+            <td>${c.alamat || '-'}</td>
+            <td>${c.pekerjaan || '-'}</td>
+            <td>
+              <span style="
+                padding: 5px 12px;
+                border-radius: 20px;
+                background: ${c.status === 'Aktif' ? '#d4edda' : '#f8d7da'};
+                color: ${c.status === 'Aktif' ? '#155724' : '#721c24'};
+              ">${c.status || '-'}</span>
             </td>
-          </tr>
-        `;
-        document.getElementById('pagination').innerHTML = '';
-        return;
+            <td>${c.telpon || '-'}</td>
+            <td class="actions">
+              <button class="edit-btn" onclick="editClient('${c.id}')">
+                <i class="fas fa-edit"></i> Edit
+              </button>
+              <button class="wa-btn" onclick="sendToWhatsApp('${c.telpon}', '${encodeURIComponent(c.nama)}')">
+                <i class="fab fa-whatsapp"></i> WA
+              </button>
+              <button class="delete-btn" onclick="deleteClient('${c.id}')">
+                <i class="fas fa-trash"></i> Hapus
+              </button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+        
+        renderPagination(filtered.length);
+      } catch (error) {
+        console.error("Error dalam renderTable:", error);
+        showNotification("Terjadi kesalahan saat menampilkan data: " + error.message, "error");
       }
-      
-      if (paginated.length === 0 && currentPageNum > 1) {
-        currentPageNum = 1;
-        renderTable();
-        return;
-      }
-      
-      paginated.forEach(c => {
-        const usia = c.tglLahir ? calculateAge(c.tglLahir) : '-';
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${c.nama || '-'}</td>
-          <td>${formatDate(c.tglLahir) || '-'}</td>
-          <td>${usia}</td>
-          <td>${c.alamat || '-'}</td>
-          <td>${c.pekerjaan || '-'}</td>
-          <td>
-            <span style="
-              padding: 5px 12px;
-              border-radius: 20px;
-              background: ${c.status === 'Aktif' ? '#d4edda' : '#f8d7da'};
-              color: ${c.status === 'Aktif' ? '#155724' : '#721c24'};
-            ">${c.status || '-'}</span>
-          </td>
-          <td>${c.telpon || '-'}</td>
-          <td class="actions">
-            <button class="edit-btn" onclick="editClient('${c.id}')">
-              <i class="fas fa-edit"></i> Edit
-            </button>
-            <button class="wa-btn" onclick="sendToWhatsApp('${c.telpon}', '${encodeURIComponent(c.nama)}')">
-              <i class="fab fa-whatsapp"></i> WA
-            </button>
-            <button class="delete-btn" onclick="deleteClient('${c.id}')">
-              <i class="fas fa-trash"></i> Hapus
-            </button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-      
-      renderPagination(filtered.length);
     }
     
     function renderPagination(total) {
-      const totalPages = Math.ceil(total / rowsPerPage);
-      const pagination = document.getElementById('pagination');
-      pagination.innerHTML = '';
-      
-      // Tombol Previous
-      if (currentPageNum > 1) {
-        const prevBtn = document.createElement('button');
-        prevBtn.innerHTML = '&laquo;';
-        prevBtn.onclick = () => { 
-          currentPageNum = 1; 
-          renderTable(); 
-        };
-        pagination.appendChild(prevBtn);
-      }
-      
-      // Tombol nomor halaman
-      const maxVisiblePages = 5;
-      let startPage = Math.max(1, currentPageNum - Math.floor(maxVisiblePages / 2));
-      let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-      
-      if (endPage - startPage + 1 < maxVisiblePages) {
-        startPage = Math.max(1, endPage - maxVisiblePages + 1);
-      }
-      
-      for (let i = startPage; i <= endPage; i++) {
-        const btn = document.createElement('button');
-        btn.textContent = i;
-        if (i === currentPageNum) btn.classList.add('active');
-        btn.onclick = () => { 
-          currentPageNum = i; 
-          renderTable(); 
-        };
-        pagination.appendChild(btn);
-      }
-      
-      // Tombol Next
-      if (currentPageNum < totalPages) {
-        const nextBtn = document.createElement('button');
-        nextBtn.innerHTML = '&raquo;';
-        nextBtn.onclick = () => { 
-          currentPageNum = totalPages; 
-          renderTable(); 
-        };
-        pagination.appendChild(nextBtn);
+      try {
+        const totalPages = Math.ceil(total / rowsPerPage);
+        const pagination = document.getElementById('pagination');
+        pagination.innerHTML = '';
+        
+        // Tombol Previous
+        if (currentPageNum > 1) {
+          const prevBtn = document.createElement('button');
+          prevBtn.innerHTML = '&laquo;';
+          prevBtn.onclick = () => { 
+            currentPageNum = 1; 
+            renderTable(); 
+          };
+          pagination.appendChild(prevBtn);
+        }
+        
+        // Tombol nomor halaman
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, currentPageNum - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+        
+        if (endPage - startPage + 1 < maxVisiblePages) {
+          startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+          const btn = document.createElement('button');
+          btn.textContent = i;
+          if (i === currentPageNum) btn.classList.add('active');
+          btn.onclick = () => { 
+            currentPageNum = i; 
+            renderTable(); 
+          };
+          pagination.appendChild(btn);
+        }
+        
+        // Tombol Next
+        if (currentPageNum < totalPages) {
+          const nextBtn = document.createElement('button');
+          nextBtn.innerHTML = '&raquo;';
+          nextBtn.onclick = () => { 
+            currentPageNum = totalPages; 
+            renderTable(); 
+          };
+          pagination.appendChild(nextBtn);
+        }
+      } catch (error) {
+        console.error("Error dalam renderPagination:", error);
+        showNotification("Terjadi kesalahan saat menampilkan paginasi: " + error.message, "error");
       }
     }
     
     function updateDashboard() {
-      const total = clients.length;
-      const active = clients.filter(c => c.status === 'Aktif').length;
-      const inactive = total - active;
-      
-      const ages = clients
-        .filter(c => c.tglLahir)
-        .map(c => calculateAge(c.tglLahir));
-      
-      const avgAge = ages.length > 0 
-        ? Math.round(ages.reduce((a, b) => a + b, 0) / ages.length) 
-        : 0;
-      
-      document.getElementById('totalClients').textContent = total;
-      document.getElementById('activeClients').textContent = active;
-      document.getElementById('inactiveClients').textContent = inactive;
-      document.getElementById('avgAge').textContent = avgAge;
-      
-      updateJobChart();
+      try {
+        const total = clients.length;
+        const active = clients.filter(c => c.status === 'Aktif').length;
+        const inactive = total - active;
+        
+        const ages = clients
+          .filter(c => c.tglLahir)
+          .map(c => calculateAge(c.tglLahir));
+        
+        const avgAge = ages.length > 0 
+          ? Math.round(ages.reduce((a, b) => a + b, 0) / ages.length) 
+          : 0;
+        
+        document.getElementById('totalClients').textContent = total;
+        document.getElementById('activeClients').textContent = active;
+        document.getElementById('inactiveClients').textContent = inactive;
+        document.getElementById('avgAge').textContent = avgAge;
+        
+        updateJobChart();
+      } catch (error) {
+        console.error("Error dalam updateDashboard:", error);
+        showNotification("Terjadi kesalahan saat memperbarui dashboard: " + error.message, "error");
+      }
     }
     
     function updateJobChart() {
-      const jobCount = {};
-      clients.forEach(c => {
-        const job = c.pekerjaan || 'Tidak Diketahui';
-        jobCount[job] = (jobCount[job] || 0) + 1;
-      });
-      
-      const ctx = document.getElementById('jobChart').getContext('2d');
-      if (jobChart) jobChart.destroy();
-      
-      jobChart = new Chart(ctx, {
-        type: 'bar',
-         {
-          labels: Object.keys(jobCount),
-          datasets: [{
-            label: 'Jumlah Client',
-             Object.values(jobCount),
-            backgroundColor: 'rgba(52, 152, 219, 0.7)',
-            borderColor: 'rgba(52, 152, 219, 1)',
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              precision: 0
+      try {
+        const jobCount = {};
+        clients.forEach(c => {
+          const job = c.pekerjaan || 'Tidak Diketahui';
+          jobCount[job] = (jobCount[job] || 0) + 1;
+        });
+        
+        const ctx = document.getElementById('jobChart').getContext('2d');
+        if (jobChart) jobChart.destroy();
+        
+        // INISIALISASI CHART.JS DENGAN BENAR
+        jobChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: Object.keys(jobCount),
+            datasets: [{
+              label: 'Jumlah Client',
+              data: Object.values(jobCount),
+              backgroundColor: 'rgba(52, 152, 219, 0.7)',
+              borderColor: 'rgba(52, 152, 219, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                precision: 0
+              }
             }
           }
-        }
-      });
+        });
+        
+        console.log("Grafik berhasil diperbarui");
+      } catch (error) {
+        console.error("Error dalam updateJobChart:", error);
+        showNotification("Terjadi kesalahan saat memperbarui grafik: " + error.message, "error");
+      }
     }
     
     function calculateAge(birthday) {
       if (!birthday) return '-';
       
-      const today = new Date();
-      const birth = new Date(birthday);
-      
-      // Periksa apakah tanggal lahir valid
-      if (isNaN(birth)) return '-';
-      
-      let age = today.getFullYear() - birth.getFullYear();
-      const m = today.getMonth() - birth.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-      return age;
+      try {
+        const today = new Date();
+        const birth = new Date(birthday);
+        
+        // Periksa apakah tanggal lahir valid
+        if (isNaN(birth)) return '-';
+        
+        let age = today.getFullYear() - birth.getFullYear();
+        const m = today.getMonth() - birth.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+        return age;
+      } catch (e) {
+        console.error("Error calculating age:", e);
+        return '-';
+      }
     }
     
     function formatDate(dateStr) {
@@ -948,277 +1088,339 @@
       }
     }
     
-    function openAddModal() {
-      editingId = null;
-      document.getElementById('modalTitle').textContent = 'Tambah Client Baru';
-      document.getElementById('editModal').style.display = 'flex';
-      resetForm();
-      document.getElementById('nama').focus();
-    }
-    
     function editClient(id) {
-      const c = clients.find(cli => cli.id === id);
-      if (!c) {
-        showNotification('Client tidak ditemukan', 'error');
-        return;
+      try {
+        const c = clients.find(cli => cli.id === id);
+        if (!c) {
+          showNotification('Client tidak ditemukan', 'error');
+          return;
+        }
+        
+        editingId = id;
+        document.getElementById('modalTitle').textContent = 'Edit Data Client';
+        document.getElementById('editModal').style.display = 'flex';
+        
+        document.getElementById('nama').value = c.nama || '';
+        document.getElementById('tglLahir').value = c.tglLahir || '';
+        document.getElementById('alamat').value = c.alamat || '';
+        document.getElementById('pekerjaan').value = c.pekerjaan || '';
+        document.getElementById('status').value = c.status || 'Aktif';
+        document.getElementById('telpon').value = c.telpon || '';
+        document.getElementById('keterangan').value = c.keterangan || '';
+        
+        document.getElementById('nama').focus();
+        console.log("Mengedit client dengan ID:", id);
+      } catch (error) {
+        console.error("Error dalam editClient:", error);
+        showNotification("Terjadi kesalahan saat mengedit: " + error.message, "error");
       }
-      
-      editingId = id;
-      document.getElementById('modalTitle').textContent = 'Edit Data Client';
-      document.getElementById('editModal').style.display = 'flex';
-      
-      document.getElementById('nama').value = c.nama || '';
-      document.getElementById('tglLahir').value = c.tglLahir || '';
-      document.getElementById('alamat').value = c.alamat || '';
-      document.getElementById('pekerjaan').value = c.pekerjaan || '';
-      document.getElementById('status').value = c.status || 'Aktif';
-      document.getElementById('telpon').value = c.telpon || '';
-      document.getElementById('keterangan').value = c.keterangan || '';
-      
-      document.getElementById('nama').focus();
     }
     
     function closeModal() {
-      document.getElementById('editModal').style.display = 'none';
+      try {
+        document.getElementById('editModal').style.display = 'none';
+        console.log("Modal ditutup");
+      } catch (error) {
+        console.error("Error dalam closeModal:", error);
+      }
     }
     
     function resetForm() {
-      document.getElementById('nama').value = '';
-      document.getElementById('tglLahir').value = '';
-      document.getElementById('alamat').value = '';
-      document.getElementById('pekerjaan').value = '';
-      document.getElementById('status').value = 'Aktif';
-      document.getElementById('telpon').value = '';
-      document.getElementById('keterangan').value = '';
-      
-      // Reset error messages
-      document.getElementById('errorNama').style.display = 'none';
-      document.getElementById('errorTelpon').style.display = 'none';
+      try {
+        document.getElementById('nama').value = '';
+        document.getElementById('tglLahir').value = '';
+        document.getElementById('alamat').value = '';
+        document.getElementById('pekerjaan').value = '';
+        document.getElementById('status').value = 'Aktif';
+        document.getElementById('telpon').value = '';
+        document.getElementById('keterangan').value = '';
+        
+        // Reset error messages
+        document.getElementById('errorNama').style.display = 'none';
+        document.getElementById('errorTelpon').style.display = 'none';
+        console.log("Form direset");
+      } catch (error) {
+        console.error("Error dalam resetForm:", error);
+      }
     }
     
     function validateForm() {
-      const nama = document.getElementById('nama').value.trim();
-      const telpon = document.getElementById('telpon').value.trim();
-      
-      let isValid = true;
-      
-      // Validasi nama
-      if (!nama) {
-        document.getElementById('errorNama').style.display = 'block';
-        isValid = false;
-      } else {
-        document.getElementById('errorNama').style.display = 'none';
-      }
-      
-      // Validasi nomor telepon
-      if (!telpon || !/^08\d{8,11}$/.test(telpon)) {
-        document.getElementById('errorTelpon').style.display = 'block';
-        isValid = false;
-      } else {
-        document.getElementById('errorTelpon').style.display = 'none';
-      }
-      
-      return isValid;
-    }
-    
-    function saveClient() {
-      if (!validateForm()) return;
-      
-      const data = {
-        nama: document.getElementById('nama').value.trim(),
-        tglLahir: document.getElementById('tglLahir').value || null,
-        alamat: document.getElementById('alamat').value || null,
-        pekerjaan: document.getElementById('pekerjaan').value || null,
-        status: document.getElementById('status').value,
-        telpon: document.getElementById('telpon').value.trim(),
-        keterangan: document.getElementById('keterangan').value || null,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      
-      // Jika ini data baru
-      if (!editingId) {
-        data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-        db.collection('clients').add(data)
-          .then(() => {
-            closeModal();
-            showNotification('Client berhasil ditambahkan!', 'success');
-          })
-          .catch(error => {
-            console.error("Error adding document: ", error);
-            showNotification('Gagal menambahkan client: ' + error.message, 'error');
-          });
-      } 
-      // Jika edit data
-      else {
-        db.collection('clients').doc(editingId).update(data)
-          .then(() => {
-            closeModal();
-            showNotification('Data client berhasil diperbarui!', 'success');
-          })
-          .catch(error => {
-            console.error("Error updating document: ", error);
-            showNotification('Gagal memperbarui  ' + error.message, 'error');
-          });
+      try {
+        const nama = document.getElementById('nama').value.trim();
+        const telpon = document.getElementById('telpon').value.trim();
+        
+        let isValid = true;
+        
+        // Validasi nama
+        if (!nama) {
+          document.getElementById('errorNama').style.display = 'block';
+          isValid = false;
+        } else {
+          document.getElementById('errorNama').style.display = 'none';
+        }
+        
+        // Validasi nomor telepon
+        if (!telpon || !/^08\d{8,11}$/.test(telpon)) {
+          document.getElementById('errorTelpon').style.display = 'block';
+          isValid = false;
+        } else {
+          document.getElementById('errorTelpon').style.display = 'none';
+        }
+        
+        return isValid;
+      } catch (error) {
+        console.error("Error dalam validateForm:", error);
+        showNotification("Terjadi kesalahan saat validasi form: " + error.message, "error");
+        return false;
       }
     }
     
     function deleteClient(id) {
-      if (!confirm('Apakah Anda yakin ingin menghapus client ini? Data yang dihapus tidak dapat dikembalikan.')) {
-        return;
+      try {
+        if (!confirm('Apakah Anda yakin ingin menghapus client ini? Data yang dihapus tidak dapat dikembalikan.')) {
+          return;
+        }
+        
+        db.collection('clients').doc(id).delete()
+          .then(() => {
+            showNotification('Client berhasil dihapus!', 'success');
+            console.log("Client dengan ID", id, "berhasil dihapus");
+          })
+          .catch(error => {
+            console.error("Error removing document: ", error);
+            showNotification('Gagal menghapus client: ' + error.message, 'error');
+          });
+      } catch (error) {
+        console.error("Error dalam deleteClient:", error);
+        showNotification("Terjadi kesalahan saat menghapus: " + error.message, "error");
       }
-      
-      db.collection('clients').doc(id).delete()
-        .then(() => {
-          showNotification('Client berhasil dihapus!', 'success');
-        })
-        .catch(error => {
-          console.error("Error removing document: ", error);
-          showNotification('Gagal menghapus client: ' + error.message, 'error');
-        });
     }
     
     function sendToWhatsApp(telpon, nama) {
-      if (!telpon) {
-        showNotification('Nomor telepon tidak tersedia', 'error');
-        return;
+      try {
+        if (!telpon) {
+          showNotification('Nomor telepon tidak tersedia', 'error');
+          return;
+        }
+        
+        // Format nomor telepon untuk WhatsApp
+        const cleanTelpon = telpon.replace(/\D/g, '');
+        if (!cleanTelpon.startsWith('0')) {
+          showNotification('Format nomor telepon tidak valid', 'error');
+          return;
+        }
+        
+        const waNumber = '62' + cleanTelpon.substring(1);
+        const message = `Halo%20${nama},%20ini%20adalah%20pesan%20dari%20Admin%20Client%20Database.`;
+        window.open(`https://wa.me/${waNumber}?text=${message}`, '_blank');
+        console.log("Membuka WhatsApp dengan nomor:", waNumber);
+      } catch (error) {
+        console.error("Error dalam sendToWhatsApp:", error);
+        showNotification("Terjadi kesalahan saat membuka WhatsApp: " + error.message, "error");
       }
-      
-      // Format nomor telepon untuk WhatsApp
-      const cleanTelpon = telpon.replace(/\D/g, '');
-      if (!cleanTelpon.startsWith('0')) {
-        showNotification('Format nomor telepon tidak valid', 'error');
-        return;
-      }
-      
-      const waNumber = '62' + cleanTelpon.substring(1);
-      const message = `Halo%20${nama},%20ini%20adalah%20pesan%20dari%20Admin%20Client%20Database.`;
-      window.open(`https://wa.me/${waNumber}?text=${message}`, '_blank');
     }
     
     function exportToExcel() {
-      const data = clients.map(c => ({
-        Nama: c.nama,
-        'Tgl Lahir': c.tglLahir ? formatDate(c.tglLahir) : '',
-        Usia: c.tglLahir ? calculateAge(c.tglLahir) : '',
-        Alamat: c.alamat,
-        Pekerjaan: c.pekerjaan,
-        Status: c.status,
-        'No. Telpon': c.telpon,
-        Keterangan: c.keterangan
-      }));
-      
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Clients");
-      
-      // Format kolom tanggal
-      ws['!cols'] = [
-        { wch: 25 }, // Nama
-        { wch: 15 }, // Tgl Lahir
-        { wch: 10 }, // Usia
-        { wch: 30 }, // Alamat
-        { wch: 20 }, // Pekerjaan
-        { wch: 10 }, // Status
-        { wch: 15 }, // No. Telpon
-        { wch: 30 }  // Keterangan
-      ];
-      
-      XLSX.writeFile(wb, `data_client_${new Date().toISOString().slice(0,10)}.xlsx`);
+      try {
+        const data = clients.map(c => ({
+          Nama: c.nama,
+          'Tgl Lahir': c.tglLahir ? formatDate(c.tglLahir) : '',
+          Usia: c.tglLahir ? calculateAge(c.tglLahir) : '',
+          Alamat: c.alamat,
+          Pekerjaan: c.pekerjaan,
+          Status: c.status,
+          'No. Telpon': c.telpon,
+          Keterangan: c.keterangan
+        }));
+        
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Clients");
+        
+        // Format kolom tanggal
+        ws['!cols'] = [
+          { wch: 25 }, // Nama
+          { wch: 15 }, // Tgl Lahir
+          { wch: 10 }, // Usia
+          { wch: 30 }, // Alamat
+          { wch: 20 }, // Pekerjaan
+          { wch: 10 }, // Status
+          { wch: 15 }, // No. Telpon
+          { wch: 30 }  // Keterangan
+        ];
+        
+        XLSX.writeFile(wb, `data_client_${new Date().toISOString().slice(0,10)}.xlsx`);
+        console.log("Ekspor ke Excel berhasil");
+      } catch (error) {
+        console.error("Error dalam exportToExcel:", error);
+        showNotification("Terjadi kesalahan saat ekspor ke Excel: " + error.message, "error");
+      }
     }
     
     function exportToPDF() {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4'
-      });
-      
-      const headers = [['Nama', 'Tgl Lahir', 'Usia', 'Alamat', 'Pekerjaan', 'Status', 'No. Telpon']];
-      const data = clients.map(c => {
-        const usia = c.tglLahir ? calculateAge(c.tglLahir) : '-';
-        return [
-          c.nama || '',
-          c.tglLahir ? formatDate(c.tglLahir) : '',
-          usia,
-          c.alamat || '',
-          c.pekerjaan || '',
-          c.status || '',
-          c.telpon || ''
-        ];
-      });
-      
-      doc.setFontSize(18);
-      doc.text('Data Client', 14, 15);
-      
-      doc.setFontSize(11);
-      doc.text(`Dicetak pada: ${new Date().toLocaleDateString('id-ID')} ${new Date().toLocaleTimeString('id-ID')}`, 14, 25);
-      
-      doc.autoTable({
-        head: headers,
-        body: data,
-        startY: 30,
-        theme: 'striped',
-        styles: { fontSize: 9 },
-        headStyles: { fillColor: [52, 152, 219] }
-      });
-      
-      doc.save(`data_client_${new Date().toISOString().slice(0,10)}.pdf`);
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+          orientation: 'landscape',
+          unit: 'mm',
+          format: 'a4'
+        });
+        
+        const headers = [['Nama', 'Tgl Lahir', 'Usia', 'Alamat', 'Pekerjaan', 'Status', 'No. Telpon']];
+        const data = clients.map(c => {
+          const usia = c.tglLahir ? calculateAge(c.tglLahir) : '-';
+          return [
+            c.nama || '',
+            c.tglLahir ? formatDate(c.tglLahir) : '',
+            usia,
+            c.alamat || '',
+            c.pekerjaan || '',
+            c.status || '',
+            c.telpon || ''
+          ];
+        });
+        
+        doc.setFontSize(18);
+        doc.text('Data Client', 14, 15);
+        
+        doc.setFontSize(11);
+        doc.text(`Dicetak pada: ${new Date().toLocaleDateString('id-ID')} ${new Date().toLocaleTimeString('id-ID')}`, 14, 25);
+        
+        doc.autoTable({
+          head: headers,
+          body: data,
+          startY: 30,
+          theme: 'striped',
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [52, 152, 219] }
+        });
+        
+        doc.save(`data_client_${new Date().toISOString().slice(0,10)}.pdf`);
+        console.log("Ekspor ke PDF berhasil");
+      } catch (error) {
+        console.error("Error dalam exportToPDF:", error);
+        showNotification("Terjadi kesalahan saat ekspor ke PDF: " + error.message, "error");
+      }
     }
     
     function filterTable() {
-      currentPageNum = 1;
-      renderTable();
+      try {
+        currentPageNum = 1;
+        renderTable();
+        console.log("Memfilter tabel dengan query:", document.getElementById('searchInput')?.value);
+      } catch (error) {
+        console.error("Error dalam filterTable:", error);
+        showNotification("Terjadi kesalahan saat memfilter tabel: " + error.message, "error");
+      }
     }
     
     function showNotification(message, type) {
-      // Hapus notifikasi lama jika ada
-      const oldNotification = document.querySelector('.notification');
-      if (oldNotification) oldNotification.remove();
-      
-      // Buat notifikasi baru
-      const notification = document.createElement('div');
-      notification.className = `notification ${type}`;
-      notification.innerHTML = `
-        <strong>${type === 'success' ? 'Berhasil!' : 'Error!'}</strong>
-        <p style="margin-top: 5px; margin-bottom: 0;">${message}</p>
-      `;
-      
-      document.body.appendChild(notification);
-      
-      // Tampilkan notifikasi
-      setTimeout(() => {
-        notification.style.opacity = '1';
-        notification.style.transform = 'translateX(0)';
-      }, 10);
-      
-      // Sembunyikan notifikasi
-      setTimeout(() => {
-        notification.style.opacity = '0';
-        notification.style.transform = 'translateX(100px)';
+      try {
+        // Hapus notifikasi lama jika ada
+        const oldNotification = document.querySelector('.notification');
+        if (oldNotification) oldNotification.remove();
         
+        // Buat notifikasi baru
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+          <strong>${type === 'success' ? 'Berhasil!' : 'Error!'}</strong>
+          <p style="margin-top: 5px; margin-bottom: 0;">${message}</p>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Tampilkan notifikasi
         setTimeout(() => {
-          if (notification.parentNode) {
-            notification.parentNode.removeChild(notification);
-          }
-        }, 300);
-      }, 3000);
+          notification.style.opacity = '1';
+          notification.style.transform = 'translateX(0)';
+        }, 10);
+        
+        // Sembunyikan notifikasi
+        setTimeout(() => {
+          notification.style.opacity = '0';
+          notification.style.transform = 'translateX(100px)';
+          
+          setTimeout(() => {
+            if (notification.parentNode) {
+              notification.parentNode.removeChild(notification);
+            }
+          }, 300);
+        }, 3000);
+      } catch (error) {
+        console.error("Error dalam showNotification:", error);
+      }
     }
     
-    // Close modal when clicking outside
-    window.onclick = function(event) {
-      const modal = document.getElementById('editModal');
-      if (event.target === modal) {
-        closeModal();
+    // Pastikan semua event listener terdaftar setelah DOM selesai dimuat
+    document.addEventListener('DOMContentLoaded', function() {
+      try {
+        console.log("DOM selesai dimuat, mendaftarkan event listeners...");
+        
+        // Pastikan tombol Tambah Client memiliki event listener
+        const addClientBtn = document.getElementById('addClientBtn');
+        if (addClientBtn) {
+          addClientBtn.addEventListener('click', openAddModal);
+          console.log("Event listener untuk Tambah Client terdaftar");
+        } else {
+          console.error("Tombol Tambah Client tidak ditemukan");
+        }
+        
+        // Pastikan tombol Simpan memiliki event listener
+        const saveClientBtn = document.getElementById('saveClientBtn');
+        if (saveClientBtn) {
+          saveClientBtn.addEventListener('click', saveClient);
+          console.log("Event listener untuk Simpan terdaftar");
+        } else {
+          console.error("Tombol Simpan tidak ditemukan");
+        }
+        
+        // Tambahkan event listener untuk tombol close modal
+        const closeButtons = document.querySelectorAll('.close');
+        closeButtons.forEach(button => {
+          button.addEventListener('click', closeModal);
+        });
+        
+        // Tambahkan event listener untuk Escape key
+        document.onkeydown = function(event) {
+          if (event.key === "Escape") {
+            closeModal();
+          }
+        };
+        
+        // Tambahkan event listener untuk klik di luar modal
+        window.onclick = function(event) {
+          const modal = document.getElementById('editModal');
+          if (event.target === modal) {
+            closeModal();
+          }
+        };
+        
+        console.log("Semua event listener berhasil terdaftar");
+      } catch (error) {
+        console.error("Error dalam DOMContentLoaded:", error);
+        showNotification("Terjadi kesalahan saat mempersiapkan halaman: " + error.message, "error");
       }
-    };
+    });
     
-    // Handle escape key to close modal
-    document.onkeydown = function(event) {
-      if (event.key === "Escape") {
-        closeModal();
+    // Tambahkan event listener untuk tombol Tambah Client
+    document.addEventListener('DOMContentLoaded', function() {
+      const addClientBtn = document.getElementById('addClientBtn');
+      if (addClientBtn) {
+        addClientBtn.addEventListener('click', function() {
+          console.log("Tombol Tambah Client diklik");
+          openAddModal();
+        });
       }
-    };
+      
+      const saveClientBtn = document.getElementById('saveClientBtn');
+      if (saveClientBtn) {
+        saveClientBtn.addEventListener('click', function() {
+          console.log("Tombol Simpan diklik");
+          saveClient();
+        });
+      }
+    });
   </script>
 </body>
 </html>
