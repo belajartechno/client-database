@@ -513,23 +513,17 @@
             let errorMessage = "Gagal mengirim ";
             
             // Tambahkan penanganan error spesifik
-            db.collection('clients').add(clientData)
-  .then(docRef => {
-    // ...
-  })
-  .catch(error => {
-    console.error("Error adding document:", error);
-    console.error("Error code:", error.code);
-    console.error("Error message:", error.message);
-    
-    if (error.code === "failed-precondition") {
-      showNotification("Anda tidak memiliki izin untuk menyimpan data.", "error");
-    } else if (error.code === "permission-denied") {
-      showNotification("Akses ditolak. Hubungi admin.", "error");
-    } else {
-      showNotification("Gagal mengirim data: " + error.message, "error");
-    }
-  });
+            if (error.code === "failed-precondition") {
+              errorMessage += "Anda tidak memiliki izin untuk menyimpan data.";
+            } else if (error.code === "permission-denied") {
+              errorMessage += "Akses ditolak. Pastikan Firestore Rules sudah diatur dengan benar.";
+            } else {
+              errorMessage += error.message;
+            }
+            
+            showNotification(errorMessage, "error");
+            disableSubmitButton(false);
+          });
           
         return true;
       } catch (error) {
