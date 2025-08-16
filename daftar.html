@@ -513,19 +513,23 @@
             let errorMessage = "Gagal mengirim ";
             
             // Tambahkan penanganan error spesifik
-            if (error.code === 'permission-denied') {
-              errorMessage += "Anda tidak memiliki izin untuk menyimpan data. Pastikan Firestore Rules sudah diatur dengan benar.";
-            } else if (error.code === 'invalid-argument') {
-              errorMessage += "Format data tidak valid. Pastikan semua field diisi dengan benar.";
-            } else if (error.code === 'unavailable') {
-              errorMessage += "Koneksi ke database terputus. Periksa koneksi internet Anda.";
-            } else {
-              errorMessage += error.message;
-            }
-            
-            showNotification(errorMessage, "error");
-            disableSubmitButton(false);
-          });
+            db.collection('clients').add(clientData)
+  .then(docRef => {
+    // ...
+  })
+  .catch(error => {
+    console.error("Error adding document:", error);
+    console.error("Error code:", error.code);
+    console.error("Error message:", error.message);
+    
+    if (error.code === "failed-precondition") {
+      showNotification("Anda tidak memiliki izin untuk menyimpan data.", "error");
+    } else if (error.code === "permission-denied") {
+      showNotification("Akses ditolak. Hubungi admin.", "error");
+    } else {
+      showNotification("Gagal mengirim data: " + error.message, "error");
+    }
+  });
           
         return true;
       } catch (error) {
